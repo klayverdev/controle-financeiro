@@ -1,4 +1,4 @@
-// Default seed data (usado apenas na primeira vez de cada usuário, para popular o banco vazio)
+
 const defaultTransactions = [
     { description: 'Salário Mensal', category: 'Salário', type: 'income', amount: 5500.00, date: '2026-09-01' },
     { description: 'Projeto Freelance Web', category: 'Freelance', type: 'income', amount: 1800.00, date: '2026-09-05' },
