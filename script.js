@@ -181,16 +181,9 @@ function connectToUserDatabase(uid) {
     if (unsubscribeSnapshot) unsubscribeSnapshot();
 
     unsubscribeSnapshot = transactionsRef.onSnapshot(
-        async (snapshot) => {
+        (snapshot) => {
             hideConnectionBanner();
             transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-            if (transactions.length === 0 && !seededForUser[uid]) {
-                seededForUser[uid] = true;
-                await seedDefaultData();
-                return; // onSnapshot dispara de novo automaticamente
-            }
-
             transactions.sort((a, b) => (a.date < b.date ? 1 : -1));
             renderApp();
         },
