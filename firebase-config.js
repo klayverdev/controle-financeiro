@@ -18,5 +18,6 @@ const firebaseConfig = {
 // Inicializa o Firebase
 firebase.initializeApp(firebaseConfig);
 
-// Referência global ao Firestore (usada em script.js)
+// Referências globais usadas em script.js
 const db = firebase.firestore();
+const auth = firebase.auth();
