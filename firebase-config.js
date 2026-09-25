@@ -1,11 +1,3 @@
-// ============================================================
-// CONFIGURAÇÃO DO FIREBASE
-// ============================================================
-// Substitua os valores abaixo pelos dados do SEU projeto Firebase.
-// Você encontra esses dados em:
-// Console do Firebase > Configurações do projeto > Seus aplicativos > SDK setup and configuration
-// ============================================================
-
 const firebaseConfig = {
     apiKey: "AIzaSyBV3pB-TUH7ykiSK9YfzNGycGrT6ikad8M",
     authDomain: "financepro-5f8e4.firebaseapp.com",
