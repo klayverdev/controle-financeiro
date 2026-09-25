@@ -75,6 +75,35 @@ function toggleAuthMode() {
     hideAuthError();
 }
 
+function togglePasswordVisibility() {
+    const input = document.getElementById('authPassword');
+    const icon = document.getElementById('authPasswordIcon');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fa-solid fa-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'fa-solid fa-eye';
+    }
+}
+
+async function forgotPassword() {
+    hideAuthError();
+    const email = document.getElementById('authEmail').value.trim();
+
+    if (!email) {
+        showAuthError('Digite seu e-mail no campo acima antes de clicar em "Esqueceu a senha?".');
+        return;
+    }
+
+    try {
+        await auth.sendPasswordResetEmail(email);
+        showMessage('E-mail enviado', 'Enviamos um link de recuperação de senha para ' + email + '. Verifique também a caixa de spam.');
+    } catch (error) {
+        showAuthError(traduzErroFirebase(error));
+    }
+}
+
 function showAuthError(message) {
     const el = document.getElementById('authError');
     el.innerText = message;
@@ -123,7 +152,8 @@ function traduzErroFirebase(error) {
         'auth/invalid-credential': 'E-mail ou senha incorretos.',
         'auth/email-already-in-use': 'Este e-mail já está cadastrado.',
         'auth/weak-password': 'A senha deve ter pelo menos 6 caracteres.',
-        'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde.'
+        'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde.',
+        'auth/missing-email': 'Digite um e-mail válido.'
     };
     return map[code] || 'Ocorreu um erro. Tente novamente.';
 }
