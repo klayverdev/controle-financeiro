@@ -52,12 +52,16 @@ window.onload = function() {
 function showAuthScreen() {
     document.getElementById('authScreen').classList.remove('hidden');
     document.getElementById('appMain').classList.add('hidden');
+    document.getElementById('headerActions').classList.add('hidden');
+    document.getElementById('headerActions').classList.remove('flex');
     document.getElementById('userEmailLabel').innerText = '';
 }
 
 function showApp() {
     document.getElementById('authScreen').classList.add('hidden');
     document.getElementById('appMain').classList.remove('hidden');
+    document.getElementById('headerActions').classList.remove('hidden');
+    document.getElementById('headerActions').classList.add('flex');
     document.getElementById('userEmailLabel').innerText = currentUser.email;
 }
 
