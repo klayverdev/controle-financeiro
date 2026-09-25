@@ -1,4 +1,4 @@
-// Default seed data (usado apenas na primeira vez, para popular o banco vazio)
+// Default seed data (usado apenas na primeira vez de cada usuário, para popular o banco vazio)
 const defaultTransactions = [
     { description: 'Salário Mensal', category: 'Salário', type: 'income', amount: 5500.00, date: '2026-09-01' },
     { description: 'Projeto Freelance Web', category: 'Freelance', type: 'income', amount: 1800.00, date: '2026-09-05' },
@@ -15,6 +15,122 @@ let categoryChartInstance = null;
 let monthlyChartInstance = null;
 let transactionsRef = null;
 let unsubscribeSnapshot = null;
+let currentUser = null;
+let authMode = 'login'; // 'login' ou 'signup'
+let seededForUser = {};
+
+// ---------------------------------------------------------
+// INICIALIZAÇÃO
+// ---------------------------------------------------------
+
+window.onload = function() {
+    const currentMonthStr = String(new Date().getMonth() + 1).padStart(2, '0');
+    document.getElementById('filterMonth').value = currentMonthStr;
+
+    if (typeof auth === 'undefined' || typeof db === 'undefined') {
+        showConnectionBanner('Firebase não configurado. Edite o arquivo firebase-config.js com suas chaves.');
+        return;
+    }
+
+    auth.onAuthStateChanged(function(user) {
+        if (user) {
+            currentUser = user;
+            showApp();
+            connectToUserDatabase(user.uid);
+        } else {
+            currentUser = null;
+            if (unsubscribeSnapshot) {
+                unsubscribeSnapshot();
+                unsubscribeSnapshot = null;
+            }
+            transactions = [];
+            showAuthScreen();
+        }
+    });
+};
+
+function showAuthScreen() {
+    document.getElementById('authScreen').classList.remove('hidden');
+    document.getElementById('appMain').classList.add('hidden');
+    document.getElementById('userEmailLabel').innerText = '';
+}
+
+function showApp() {
+    document.getElementById('authScreen').classList.add('hidden');
+    document.getElementById('appMain').classList.remove('hidden');
+    document.getElementById('userEmailLabel').innerText = currentUser.email;
+}
+
+// ---------------------------------------------------------
+// AUTENTICAÇÃO (LOGIN / CADASTRO / LOGOUT)
+// ---------------------------------------------------------
+
+function toggleAuthMode() {
+    authMode = authMode === 'login' ? 'signup' : 'login';
+    const isLogin = authMode === 'login';
+    document.getElementById('authTitle').innerText = isLogin ? 'Entrar na sua conta' : 'Criar sua conta';
+    document.getElementById('authSubmitBtn').innerText = isLogin ? 'Entrar' : 'Criar conta';
+    document.getElementById('authToggleText').innerText = isLogin ? 'Ainda não tem conta?' : 'Já tem uma conta?';
+    document.getElementById('authToggleBtn').innerText = isLogin ? 'Criar conta' : 'Entrar';
+    hideAuthError();
+}
+
+function showAuthError(message) {
+    const el = document.getElementById('authError');
+    el.innerText = message;
+    el.classList.remove('hidden');
+}
+
+function hideAuthError() {
+    document.getElementById('authError').classList.add('hidden');
+}
+
+async function handleAuthSubmit(event) {
+    event.preventDefault();
+    hideAuthError();
+
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    const submitBtn = document.getElementById('authSubmitBtn');
+    submitBtn.disabled = true;
+
+    try {
+        if (authMode === 'login') {
+            await auth.signInWithEmailAndPassword(email, password);
+        } else {
+            await auth.createUserWithEmailAndPassword(email, password);
+        }
+        document.getElementById('authForm').reset();
+    } catch (error) {
+        showAuthError(traduzErroFirebase(error));
+    } finally {
+        submitBtn.disabled = false;
+    }
+}
+
+function logout() {
+    if (!confirm('Deseja sair da sua conta?')) return;
+    auth.signOut();
+}
+
+function traduzErroFirebase(error) {
+    const code = error.code || '';
+    const map = {
+        'auth/invalid-email': 'E-mail inválido.',
+        'auth/user-disabled': 'Esta conta foi desativada.',
+        'auth/user-not-found': 'Usuário não encontrado.',
+        'auth/wrong-password': 'Senha incorreta.',
+        'auth/invalid-credential': 'E-mail ou senha incorretos.',
+        'auth/email-already-in-use': 'Este e-mail já está cadastrado.',
+        'auth/weak-password': 'A senha deve ter pelo menos 6 caracteres.',
+        'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde.'
+    };
+    return map[code] || 'Ocorreu um erro. Tente novamente.';
+}
+
+// ---------------------------------------------------------
+// BANCO DE DADOS (por usuário)
+// ---------------------------------------------------------
 
 function showConnectionBanner(text) {
     const banner = document.getElementById('connectionBanner');
@@ -26,42 +142,31 @@ function hideConnectionBanner() {
     document.getElementById('connectionBanner').classList.add('hidden');
 }
 
-// Initialize application on load
-window.onload = function() {
-    const currentMonthStr = String(new Date().getMonth() + 1).padStart(2, '0');
-    document.getElementById('filterMonth').value = currentMonthStr;
-    initDatabase();
-};
-
-function initDatabase() {
-    if (typeof db === 'undefined') {
-        showConnectionBanner('Firebase não configurado. Edite o arquivo firebase-config.js com suas chaves.');
-        renderApp();
-        return;
-    }
-
+function connectToUserDatabase(uid) {
     showConnectionBanner('Conectando ao banco de dados...');
-    transactionsRef = db.collection('transactions');
+
+    // Cada usuário tem sua própria subcoleção: users/{uid}/transactions
+    transactionsRef = db.collection('users').doc(uid).collection('transactions');
+
+    if (unsubscribeSnapshot) unsubscribeSnapshot();
 
     unsubscribeSnapshot = transactionsRef.onSnapshot(
         async (snapshot) => {
             hideConnectionBanner();
             transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-            // Se o banco estiver vazio (primeiro uso), popula com os dados de exemplo
-            if (transactions.length === 0 && !window.__seeded) {
-                window.__seeded = true;
+            if (transactions.length === 0 && !seededForUser[uid]) {
+                seededForUser[uid] = true;
                 await seedDefaultData();
-                return; // onSnapshot será disparado de novo automaticamente
+                return; // onSnapshot dispara de novo automaticamente
             }
 
-            // Ordena por data (mais recentes primeiro)
             transactions.sort((a, b) => (a.date < b.date ? 1 : -1));
             renderApp();
         },
         (error) => {
             console.error('Erro ao conectar ao Firestore:', error);
-            showConnectionBanner('Erro ao conectar ao banco de dados. Verifique firebase-config.js e as regras do Firestore.');
+            showConnectionBanner('Erro ao conectar ao banco de dados. Verifique as regras do Firestore.');
             renderApp();
         }
     );
@@ -80,6 +185,10 @@ async function seedDefaultData() {
     }
 }
 
+// ---------------------------------------------------------
+// MODAIS DE MENSAGEM
+// ---------------------------------------------------------
+
 function showMessage(title, text, isError = false) {
     document.getElementById('messageModalTitle').innerText = title;
     document.getElementById('messageModalText').innerText = text;
@@ -97,6 +206,10 @@ function showMessage(title, text, isError = false) {
 function closeMessageModal() {
     document.getElementById('messageModal').classList.add('hidden');
 }
+
+// ---------------------------------------------------------
+// MODAL DE LANÇAMENTO
+// ---------------------------------------------------------
 
 function openTransactionModal(id = null) {
     document.getElementById('transactionForm').reset();
@@ -156,7 +269,7 @@ async function handleFormSubmit(event) {
     }
 
     if (!transactionsRef) {
-        showMessage('Erro', 'Banco de dados não configurado. Veja firebase-config.js.', true);
+        showMessage('Erro', 'Banco de dados não configurado.', true);
         return;
     }
 
@@ -193,7 +306,7 @@ async function resetData() {
         const batch = db.batch();
         snapshot.docs.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
-        window.__seeded = false;
+        if (currentUser) seededForUser[currentUser.uid] = false;
         await seedDefaultData();
         showMessage('Sucesso', 'Dados restaurados com sucesso!');
     } catch (error) {
@@ -201,6 +314,10 @@ async function resetData() {
         showMessage('Erro', 'Não foi possível restaurar os dados.', true);
     }
 }
+
+// ---------------------------------------------------------
+// FILTROS E FORMATAÇÃO
+// ---------------------------------------------------------
 
 function getFilteredTransactions() {
     const filterMonth = document.getElementById('filterMonth').value;
@@ -225,6 +342,10 @@ function formatDate(dateStr) {
     }
     return dateStr;
 }
+
+// ---------------------------------------------------------
+// RENDERIZAÇÃO
+// ---------------------------------------------------------
 
 function renderApp() {
     const filtered = getFilteredTransactions();
