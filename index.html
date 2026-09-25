@@ -32,12 +32,8 @@
                     <p class="text-xs text-slate-500">Controle Financeiro Inteligente</p>
                 </div>
             </div>
-            <div class="flex items-center space-x-3">
+            <div id="headerActions" class="hidden items-center space-x-3">
                 <span id="userEmailLabel" class="hidden sm:inline text-sm text-slate-500"></span>
-                <button onclick="openTransactionModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition flex items-center space-x-2">
-                    <i class="fa-solid fa-plus"></i>
-                    <span>Novo Lançamento</span>
-                </button>
                 <button onclick="logout()" class="text-slate-400 hover:text-rose-600 transition p-2" title="Sair">
                     <i class="fa-solid fa-right-from-bracket"></i>
                 </button>
@@ -127,6 +123,10 @@
                 </div>
             </div>
             <div class="flex items-center space-x-2">
+                <button onclick="openTransactionModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition flex items-center space-x-2">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Novo Lançamento</span>
+                </button>
                 <button onclick="exportCSV()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-medium transition flex items-center space-x-2 border border-slate-300">
                     <i class="fa-solid fa-file-excel text-emerald-600"></i>
                     <span>Exportar CSV</span>
