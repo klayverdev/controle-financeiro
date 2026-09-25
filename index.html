@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle Financeiro Pro</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Estilos customizados -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- Firebase SDK (banco de dados) -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 h-full flex flex-col antialiased">
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-emerald-600 text-white p-2.5 rounded-xl shadow-md flex items-center justify-center">
+                    <i class="fa-solid fa-wallet text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 tracking-tight">FinancePro</h1>
+                    <p class="text-xs text-slate-500">Controle Financeiro Inteligente</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="openTransactionModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition flex items-center space-x-2">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Novo Lançamento</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div id="connectionBanner" class="hidden bg-amber-50 border-b border-amber-200 text-amber-800 text-sm px-4 py-2 text-center">
+        <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+        <span id="connectionBannerText">Conectando ao banco de dados...</span>
+    </div>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 overflow-y-auto">
+
+        <!-- Top Controls / Filters bar -->
+        <section class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="flex items-center space-x-2">
+                    <label for="filterMonth" class="text-sm font-medium text-slate-600">Mês:</label>
+                    <select id="filterMonth" onchange="renderApp()" class="bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <option value="all">Todos os Meses</option>
+                        <option value="01">Janeiro</option>
+                        <option value="02">Fevereiro</option>
+                        <option value="03">Março</option>
+                        <option value="04">Abril</option>
+                        <option value="05">Maio</option>
+                        <option value="06">Junho</option>
+                        <option value="07">Julho</option>
+                        <option value="08">Agosto</option>
+                        <option value="09">Setembro</option>
+                        <option value="10">Outubro</option>
+                        <option value="11">Novembro</option>
+                        <option value="12">Dezembro</option>
+                    </select>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <label for="filterCategory" class="text-sm font-medium text-slate-600">Categoria:</label>
+                    <select id="filterCategory" onchange="renderApp()" class="bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <option value="all">Todas</option>
+                        <option value="Salário">Salário</option>
+                        <option value="Freelance">Freelance</option>
+                        <option value="Investimentos">Investimentos</option>
+                        <option value="Alimentação">Alimentação</option>
+                        <option value="Moradia">Moradia</option>
+                        <option value="Transporte">Transporte</option>
+                        <option value="Lazer">Lazer</option>
+                        <option value="Saúde">Saúde</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button onclick="exportCSV()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-medium transition flex items-center space-x-2 border border-slate-300">
+                    <i class="fa-solid fa-file-excel text-emerald-600"></i>
+                    <span>Exportar CSV</span>
+                </button>
+                <button onclick="resetData()" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-3 py-2 rounded-xl text-sm font-medium transition" title="Restaurar dados iniciais">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Saldo Total -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-slate-500">Saldo Líquido</p>
+                    <h3 id="kpiSaldo" class="text-3xl font-bold text-slate-900 mt-1">R$ 0,00</h3>
+                </div>
+                <div id="kpiSaldoIconBg" class="p-4 rounded-2xl bg-emerald-50 text-emerald-600">
+                    <i class="fa-solid fa-scale-balanced text-xl"></i>
+                </div>
+            </div>
+            <!-- Receitas Totais -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-slate-500">Receitas Totais</p>
+                    <h3 id="kpiReceitas" class="text-3xl font-bold text-emerald-600 mt-1">R$ 0,00</h3>
+                </div>
+                <div class="p-4 rounded-2xl bg-emerald-50 text-emerald-600">
+                    <i class="fa-solid fa-arrow-trend-up text-xl"></i>
+                </div>
+            </div>
+            <!-- Despesas Totais -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-slate-500">Despesas Totais</p>
+                    <h3 id="kpiDespesas" class="text-3xl font-bold text-rose-600 mt-1">R$ 0,00</h3>
+                </div>
+                <div class="p-4 rounded-2xl bg-rose-50 text-rose-600">
+                    <i class="fa-solid fa-arrow-trend-down text-xl"></i>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
+                <h4 class="text-base font-semibold text-slate-800 mb-4 flex items-center space-x-2">
+                    <i class="fa-solid fa-chart-pie text-emerald-600"></i>
+                    <span>Despesas por Categoria</span>
+                </h4>
+                <div class="relative flex-1 min-h-[280px] flex items-center justify-center">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
+                <h4 class="text-base font-semibold text-slate-800 mb-4 flex items-center space-x-2">
+                    <i class="fa-solid fa-chart-column text-emerald-600"></i>
+                    <span>Fluxo de Caixa Mensal</span>
+                </h4>
+                <div class="relative flex-1 min-h-[280px] flex items-center justify-center">
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-6 border-b border-slate-200 flex items-center justify-between">
+                <h4 class="text-base font-semibold text-slate-800 flex items-center space-x-2">
+                    <i class="fa-solid fa-table text-emerald-600"></i>
+                    <span>Lançamentos Financeiros</span>
+                </h4>
+                <span id="transactionCount" class="text-xs font-medium bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">0 registros</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold tracking-wider border-b border-slate-200">
+                            <th class="py-3 px-6">Data</th>
+                            <th class="py-3 px-6">Descrição</th>
+                            <th class="py-3 px-6">Categoria</th>
+                            <th class="py-3 px-6">Tipo</th>
+                            <th class="py-3 px-6 text-right">Valor</th>
+                            <th class="py-3 px-6 text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionTableBody" class="divide-y divide-slate-200 text-sm text-slate-700">
+                        <!-- Rows populated via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="transactionModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 transform transition-all">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                <h3 id="modalTitle" class="text-base font-semibold text-slate-800">Novo Lançamento</h3>
+                <button onclick="closeTransactionModal()" class="text-slate-400 hover:text-slate-600 transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="transactionForm" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="transactionId">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Tipo de Lançamento</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button type="button" id="typeIncomeBtn" onclick="setTransactionType('income')" class="py-2.5 px-4 rounded-xl text-sm font-semibold border border-slate-200 bg-emerald-50 text-emerald-700 transition flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-arrow-up"></i>
+                            <span>Receita</span>
+                        </button>
+                        <button type="button" id="typeExpenseBtn" onclick="setTransactionType('expense')" class="py-2.5 px-4 rounded-xl text-sm font-semibold border border-slate-200 bg-white text-slate-600 transition flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-arrow-down"></i>
+                            <span>Despesa</span>
+                        </button>
+                    </div>
+                    <input type="hidden" id="transactionType" value="income">
+                </div>
+                <div>
+                    <label for="transDescription" class="block text-xs font-semibold text-slate-600 uppercase mb-1">Descrição</label>
+                    <input type="text" id="transDescription" required placeholder="Ex: Salário mensal, Aluguel..." class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="transAmount" class="block text-xs font-semibold text-slate-600 uppercase mb-1">Valor (R$)</label>
+                        <input type="number" step="0.01" id="transAmount" required placeholder="0,00" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div>
+                        <label for="transDate" class="block text-xs font-semibold text-slate-600 uppercase mb-1">Data</label>
+                        <input type="date" id="transDate" required class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                </div>
+                <div>
+                    <label for="transCategory" class="block text-xs font-semibold text-slate-600 uppercase mb-1">Categoria</label>
+                    <select id="transCategory" required class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <option value="Salário">Salário</option>
+                        <option value="Freelance">Freelance</option>
+                        <option value="Investimentos">Investimentos</option>
+                        <option value="Alimentação">Alimentação</option>
+                        <option value="Moradia">Moradia</option>
+                        <option value="Transporte">Transporte</option>
+                        <option value="Lazer">Lazer</option>
+                        <option value="Saúde">Saúde</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
+                <div class="pt-2 flex items-center justify-end space-x-3">
+                    <button type="button" onclick="closeTransactionModal()" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition">Cancelar</button>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium shadow-sm transition">Salvar Lançamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="messageModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center border border-slate-200 space-y-4">
+            <div id="messageModalIcon" class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-check"></i>
+            </div>
+            <h3 id="messageModalTitle" class="text-base font-semibold text-slate-800">Aviso</h3>
+            <p id="messageModalText" class="text-sm text-slate-600"></p>
+            <button onclick="closeMessageModal()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl text-sm font-medium transition">Entendi</button>
+        </div>
+    </div>
+
+    <!-- Configuração do Firebase (edite com suas próprias chaves) -->
+    <script src="firebase-config.js"></script>
+    <!-- Lógica da aplicação -->
+    <script src="script.js"></script>
+</body>
+</html>
