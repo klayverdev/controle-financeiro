@@ -17,6 +17,7 @@
     <!-- Firebase SDK (banco de dados) -->
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 h-full flex flex-col antialiased">
 
@@ -32,9 +33,13 @@
                 </div>
             </div>
             <div class="flex items-center space-x-3">
+                <span id="userEmailLabel" class="hidden sm:inline text-sm text-slate-500"></span>
                 <button onclick="openTransactionModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition flex items-center space-x-2">
                     <i class="fa-solid fa-plus"></i>
                     <span>Novo Lançamento</span>
+                </button>
+                <button onclick="logout()" class="text-slate-400 hover:text-rose-600 transition p-2" title="Sair">
+                    <i class="fa-solid fa-right-from-bracket"></i>
                 </button>
             </div>
         </div>
@@ -45,7 +50,36 @@
         <span id="connectionBannerText">Conectando ao banco de dados...</span>
     </div>
 
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 overflow-y-auto">
+    <!-- Tela de Login / Cadastro -->
+    <div id="authScreen" class="flex-1 flex items-center justify-center px-4">
+        <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-sm space-y-5">
+            <div class="text-center space-y-1">
+                <div class="bg-emerald-600 text-white p-3 rounded-xl shadow-md inline-flex items-center justify-center">
+                    <i class="fa-solid fa-wallet text-xl"></i>
+                </div>
+                <h2 id="authTitle" class="text-lg font-bold text-slate-900 mt-2">Entrar na sua conta</h2>
+                <p class="text-sm text-slate-500">Seus lançamentos ficam salvos só para você</p>
+            </div>
+            <form id="authForm" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+                <div>
+                    <label for="authEmail" class="block text-xs font-semibold text-slate-600 uppercase mb-1">E-mail</label>
+                    <input type="email" id="authEmail" required placeholder="voce@exemplo.com" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div>
+                    <label for="authPassword" class="block text-xs font-semibold text-slate-600 uppercase mb-1">Senha</label>
+                    <input type="password" id="authPassword" required minlength="6" placeholder="Mínimo 6 caracteres" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <button type="submit" id="authSubmitBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl text-sm font-medium shadow-sm transition">Entrar</button>
+            </form>
+            <p id="authError" class="hidden text-center text-sm text-rose-600"></p>
+            <p class="text-center text-sm text-slate-500">
+                <span id="authToggleText">Ainda não tem conta?</span>
+                <button type="button" onclick="toggleAuthMode()" id="authToggleBtn" class="text-emerald-600 font-medium hover:underline">Criar conta</button>
+            </p>
+        </div>
+    </div>
+
+    <main id="appMain" class="hidden flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 overflow-y-auto">
 
         <!-- Top Controls / Filters bar -->
         <section class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
@@ -177,6 +211,7 @@
         </section>
 
     </main>
+    <!-- fim #appMain -->
 
     <div id="transactionModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 transform transition-all">
